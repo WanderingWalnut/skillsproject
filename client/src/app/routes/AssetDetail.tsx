@@ -4,9 +4,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { VibrationChart } from '../../components/Chart/VibrationChart'
 import { MetricCard } from '../../components/MetricCard/MetricCard'
-import { RiskBadge } from '../../components/RiskBadge/RiskBadge'
 import { generateMockChartData } from '../../lib/mockData'
 import { useWorkflow } from '../../stores/WorkflowContext'
+import { AssetDetailHeader } from './assetDetail/AssetDetailHeader'
+import { DiagnosticPanel } from './assetDetail/DiagnosticPanel'
 
 export function AssetDetail() {
   const navigate = useNavigate()
@@ -19,11 +20,14 @@ export function AssetDetail() {
   }, [assets, id, selectedAsset])
 
   useEffect(() => {
+    // Keep context in sync with URL-based navigation so other pages (and future widgets)
+    // can read the currently selected asset without refetching.
     if (asset && selectedAsset?.id !== asset.id) {
       setSelectedAsset(asset)
     }
   }, [asset, selectedAsset, setSelectedAsset])
 
+  // Mock chart data is stable for the lifetime of the page to avoid visual jitter.
   const chartData = useMemo(() => generateMockChartData(), [])
 
   if (workflowStep < 3) {
@@ -67,41 +71,26 @@ export function AssetDetail() {
   }
 
   const isCritical = asset.status === 'critical'
-  const isWarning = asset.status === 'warning'
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-500">
+      {/* Header is extracted to keep the route focused on routing + data orchestration */}
       <div className="flex items-center gap-4 mb-8">
         <button
           onClick={() => navigate('/assets')}
           className="p-2 hover:bg-white rounded-full transition-colors text-slate-500 hover:text-slate-900"
           type="button"
+          aria-label="Back to fleet overview"
         >
           <ArrowLeft size={24} />
         </button>
-
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900 flex items-center gap-3">
-            {asset.name}
-            <span className="text-slate-400 font-normal text-lg">#{asset.id}</span>
-          </h1>
-        </div>
-
-        <div className="ml-auto flex gap-3">
-          <button
-            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors"
-            type="button"
-          >
-            Download Report
-          </button>
-          <button
-            className={`px-4 py-2 text-white font-medium rounded-lg transition-colors shadow-sm ${
-              isCritical ? 'bg-red-600 hover:bg-red-700' : 'bg-slate-900 hover:bg-slate-800'
-            }`}
-            type="button"
-          >
-            {asset.action}
-          </button>
+        <div className="flex-1">
+          <AssetDetailHeader
+            asset={asset}
+            onPrimaryAction={() => {
+              // Placeholder action hook. Later: create work order, open modal, etc.
+            }}
+          />
         </div>
       </div>
 
@@ -139,61 +128,7 @@ export function AssetDetail() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm h-fit">
-          <h3 className="text-lg font-semibold text-slate-900 mb-6">Diagnostic Report</h3>
-
-          <div className="space-y-6">
-            <div>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Status</span>
-              <div className="mt-2">
-                <RiskBadge status={asset.status} />
-              </div>
-            </div>
-
-            <div>
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Root Cause Analysis</span>
-              <div className="mt-3 space-y-3">
-                <div className="flex items-start gap-3 text-sm">
-                  <div
-                    className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
-                      isCritical ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-slate-300'
-                    }`}
-                  />
-                  <p className="text-slate-700">
-                    <span className="font-semibold">Vibration Spike:</span> Exceeded safety threshold of 6.0mm/s for
-                    &gt;30 minutes.
-                  </p>
-                </div>
-                <div className="flex items-start gap-3 text-sm">
-                  <div
-                    className={`mt-1 w-2 h-2 rounded-full flex-shrink-0 ${
-                      isCritical ? 'bg-red-500' : isWarning ? 'bg-amber-500' : 'bg-slate-300'
-                    }`}
-                  />
-                  <p className="text-slate-700">
-                    <span className="font-semibold">Thermal Gradient:</span> Rapid heating detected in bearing housing
-                    #2.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="pt-6 border-t border-slate-100">
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Recommendation</span>
-              <p className="mt-2 text-lg font-medium text-slate-900 leading-snug">{asset.action} within next 48 hours.</p>
-              <p className="mt-1 text-sm text-slate-500">
-                Model confidence: <span className="text-slate-900 font-semibold">98.4%</span>
-              </p>
-            </div>
-
-            <button
-              className="w-full py-2.5 bg-slate-50 text-slate-700 font-medium rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors text-sm"
-              type="button"
-            >
-              Ignore Alert (Log Reason)
-            </button>
-          </div>
-        </div>
+        <DiagnosticPanel asset={asset} />
       </div>
     </div>
   )

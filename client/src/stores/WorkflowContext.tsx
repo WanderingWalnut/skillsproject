@@ -36,6 +36,8 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
 
   const handleWorkflowAction = useCallback(
     (nextStep: WorkflowStep) => {
+      // Simulate async backend work for the MVP (upload/train/predict).
+      // When we hook up the real API, this will become async calls and proper progress/error states.
       setIsProcessing(true)
 
       if (pendingTimeoutRef.current !== null) {
@@ -47,6 +49,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
         setWorkflowStep(nextStep)
 
         if (nextStep === 3) {
+          // Generate fleet data only once per run so list/detail views stay consistent.
           setAssets((prev) => (prev.length > 0 ? prev : generateMockAssets()))
         }
       }, 1500)
@@ -55,6 +58,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   )
 
   const resetWorkflow = useCallback(() => {
+    // Used by the Navbar logo click + Reset button to return to a clean demo state.
     if (pendingTimeoutRef.current !== null) {
       window.clearTimeout(pendingTimeoutRef.current)
       pendingTimeoutRef.current = null

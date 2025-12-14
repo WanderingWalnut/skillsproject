@@ -1,6 +1,10 @@
 import { RISK_BADGE_LABELS, RISK_BADGE_STYLES, RISK_DOT_STYLES } from '../../config/constants'
 import type { RiskStatus } from '../../types/asset'
 
+/**
+ * Status-only visual indicator. Colors are reserved strictly for risk communication
+ * (normal/warning/critical) per the Industrial Minimalist styling guide.
+ */
 export function RiskBadge({ status }: { status: RiskStatus }) {
   return (
     <span

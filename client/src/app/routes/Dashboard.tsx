@@ -2,11 +2,15 @@ import { Activity, CheckCircle, ChevronRight, Cpu, UploadCloud, Zap } from 'luci
 import { useNavigate } from 'react-router-dom'
 
 import { useWorkflow } from '../../stores/WorkflowContext'
+import { StepHeader } from './dashboard/StepHeader'
+import { WorkflowStepCard } from './dashboard/WorkflowStepCard'
 
 export function Dashboard() {
   const navigate = useNavigate()
   const { workflowStep, isProcessing, handleWorkflowAction } = useWorkflow()
 
+  // The dashboard is intentionally "dumb": it orchestrates the 3-step UI and navigation,
+  // while business state (step/progress/assets) lives in WorkflowContext.
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
       <div className="text-center space-y-2 mb-12">
@@ -15,22 +19,19 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-6">
-        <div
-          className={`
-            relative overflow-hidden transition-all duration-300 border rounded-xl p-8
-            ${workflowStep >= 1 ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-300 shadow-lg'}
-          `}
-        >
+        <WorkflowStepCard variant={workflowStep >= 1 ? 'complete' : 'active'}>
           <div className="flex items-start justify-between">
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`p-2 rounded-lg ${workflowStep >= 1 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}
-                >
-                  {workflowStep >= 1 ? <CheckCircle size={24} /> : <UploadCloud size={24} />}
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900">1. Upload Sensor Data</h3>
-              </div>
+              <StepHeader
+                title="1. Upload Sensor Data"
+                icon={
+                  <div
+                    className={`p-2 rounded-lg ${workflowStep >= 1 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}
+                  >
+                    {workflowStep >= 1 ? <CheckCircle size={24} /> : <UploadCloud size={24} />}
+                  </div>
+                }
+              />
 
               <p className="text-slate-500 max-w-md">
                 Import CSV or connect to historians. We'll automatically map sensor IDs to asset tags.
@@ -60,25 +61,21 @@ export function Dashboard() {
               )}
             </div>
           </div>
-        </div>
+        </WorkflowStepCard>
 
-        <div
-          className={`
-            relative overflow-hidden transition-all duration-300 border rounded-xl p-8
-            ${workflowStep < 1 ? 'opacity-40 grayscale pointer-events-none' : ''}
-            ${workflowStep >= 2 ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-300 shadow-lg'}
-          `}
-        >
+        <WorkflowStepCard isDisabled={workflowStep < 1} variant={workflowStep >= 2 ? 'complete' : 'active'}>
           <div className="flex items-start justify-between">
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`p-2 rounded-lg ${workflowStep >= 2 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}
-                >
-                  {workflowStep >= 2 ? <CheckCircle size={24} /> : <Cpu size={24} />}
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900">2. Train Model</h3>
-              </div>
+              <StepHeader
+                title="2. Train Model"
+                icon={
+                  <div
+                    className={`p-2 rounded-lg ${workflowStep >= 2 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}
+                  >
+                    {workflowStep >= 2 ? <CheckCircle size={24} /> : <Cpu size={24} />}
+                  </div>
+                }
+              />
 
               <p className="text-slate-500 max-w-md">
                 Run the anomaly detection engine. This creates a baseline for normal operation.
@@ -101,25 +98,21 @@ export function Dashboard() {
           {isProcessing && workflowStep === 1 && (
             <div className="absolute bottom-0 left-0 h-1 bg-blue-600 animate-pulse w-full"></div>
           )}
-        </div>
+        </WorkflowStepCard>
 
-        <div
-          className={`
-            relative overflow-hidden transition-all duration-300 border rounded-xl p-8
-            ${workflowStep < 2 ? 'opacity-40 grayscale pointer-events-none' : ''}
-            ${workflowStep >= 3 ? 'bg-slate-50 border-slate-200' : 'bg-white border-slate-300 shadow-lg'}
-          `}
-        >
+        <WorkflowStepCard isDisabled={workflowStep < 2} variant={workflowStep >= 3 ? 'complete' : 'active'}>
           <div className="flex items-start justify-between">
             <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`p-2 rounded-lg ${workflowStep >= 3 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}
-                >
-                  {workflowStep >= 3 ? <CheckCircle size={24} /> : <Activity size={24} />}
-                </div>
-                <h3 className="text-xl font-semibold text-slate-900">3. Run Risk Assessment</h3>
-              </div>
+              <StepHeader
+                title="3. Run Risk Assessment"
+                icon={
+                  <div
+                    className={`p-2 rounded-lg ${workflowStep >= 3 ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}
+                  >
+                    {workflowStep >= 3 ? <CheckCircle size={24} /> : <Activity size={24} />}
+                  </div>
+                }
+              />
 
               <p className="text-slate-500 max-w-md">
                 Compare recent telemetry against the trained model to identify deviations.
@@ -154,7 +147,7 @@ export function Dashboard() {
               )}
             </div>
           </div>
-        </div>
+        </WorkflowStepCard>
       </div>
     </div>
   )

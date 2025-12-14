@@ -12,12 +12,14 @@ export function Layout() {
       <Navbar />
 
       <main className="p-6 md:p-12 max-w-7xl mx-auto">
+        {/* Route outlet: renders Dashboard / Assets / AssetDetail */}
         <Outlet />
       </main>
 
       <div className="fixed bottom-4 right-4">
         <button
           onClick={() => {
+            // Clear demo state and return to the start of the workflow.
             resetWorkflow()
             navigate('/')
           }}
