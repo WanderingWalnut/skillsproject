@@ -1,44 +1,32 @@
 import { Activity, CheckCircle, ChevronRight, Cpu, FileText, UploadCloud, X, Zap } from 'lucide-react'
-import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
+import { useFileUpload } from '../../hooks/useFileUpload'
 import { useWorkflow } from '../../stores/WorkflowContext'
 import { StepHeader } from './dashboard/StepHeader'
 import { WorkflowStepCard } from './dashboard/WorkflowStepCard'
 
 export function Dashboard() {
   const navigate = useNavigate()
-  const { workflowStep, isProcessing, handleWorkflowAction, uploadedFile, setUploadedFile } = useWorkflow()
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const {
+    workflowStep,
+    isProcessing,
+    uploadedFile,
+    setUploadedFile,
+    advanceToStep,
+    runTraining,
+    runAssessment,
+  } = useWorkflow()
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file && file.type === 'text/csv') {
-      setUploadedFile(file)
-    }
-  }
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click()
-  }
+  const { inputProps, openFilePicker, clearInput, loadSampleData } = useFileUpload({
+    onFileSelected: setUploadedFile,
+  })
 
   const handleRemoveFile = () => {
     setUploadedFile(null)
-    if (fileInputRef.current) {
-      fileInputRef.current.value = ''
-    }
+    clearInput()
   }
 
-  const handleUseSampleData = async () => {
-    // Fetch sample CSV and set it as the uploaded file
-    const csvResponse = await fetch('/sample_maintenance_data.csv')
-    const csvBlob = await csvResponse.blob()
-    const sampleFile = new File([csvBlob], 'sample_maintenance_data.csv', { type: 'text/csv' })
-    setUploadedFile(sampleFile)
-  }
-
-  // The dashboard is intentionally "dumb": it orchestrates the 3-step UI and navigation,
-  // while business state (step/progress/assets) lives in WorkflowContext.
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
       <div className="text-center space-y-2 mb-12">
@@ -47,6 +35,7 @@ export function Dashboard() {
       </div>
 
       <div className="grid gap-6">
+        {/* Step 1: Upload */}
         <WorkflowStepCard variant={workflowStep >= 1 ? 'complete' : 'active'}>
           <div className="flex items-start justify-between">
             <div className="space-y-4">
@@ -67,20 +56,12 @@ export function Dashboard() {
 
               {workflowStep === 0 && (
                 <div className="mt-4 space-y-4">
-                  {/* Hidden file input */}
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".csv"
-                    onChange={handleFileChange}
-                    className="hidden"
-                  />
+                  <input {...inputProps} />
 
-                  {/* File selection UI */}
                   {!uploadedFile ? (
                     <div className="flex flex-col sm:flex-row gap-3">
                       <button
-                        onClick={handleUploadClick}
+                        onClick={openFilePicker}
                         disabled={isProcessing}
                         className="px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 disabled:opacity-50"
                         type="button"
@@ -89,7 +70,7 @@ export function Dashboard() {
                         Choose CSV File
                       </button>
                       <button
-                        onClick={handleUseSampleData}
+                        onClick={loadSampleData}
                         disabled={isProcessing}
                         className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50"
                         type="button"
@@ -100,7 +81,6 @@ export function Dashboard() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-4">
-                      {/* Selected file display */}
                       <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg">
                         <FileText size={18} className="text-emerald-600" />
                         <span className="text-sm font-medium text-emerald-800">{uploadedFile.name}</span>
@@ -113,15 +93,14 @@ export function Dashboard() {
                         </button>
                       </div>
 
-                      {/* Continue button */}
                       <button
-                        onClick={() => handleWorkflowAction(1)}
+                        onClick={() => advanceToStep(1)}
                         disabled={isProcessing}
                         className="px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 disabled:opacity-50"
                         type="button"
                       >
-                        {isProcessing ? 'Processing...' : 'Continue'}
-                        {!isProcessing && <ChevronRight size={16} />}
+                        Continue
+                        <ChevronRight size={16} />
                       </button>
                     </div>
                   )}
@@ -139,6 +118,7 @@ export function Dashboard() {
           </div>
         </WorkflowStepCard>
 
+        {/* Step 2: Train */}
         <WorkflowStepCard isDisabled={workflowStep < 1} variant={workflowStep >= 2 ? 'complete' : 'active'}>
           <div className="flex items-start justify-between">
             <div className="space-y-4">
@@ -159,7 +139,7 @@ export function Dashboard() {
 
               {workflowStep === 1 && (
                 <button
-                  onClick={() => handleWorkflowAction(2)}
+                  onClick={runTraining}
                   disabled={isProcessing}
                   className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 shadow-md shadow-blue-200"
                   type="button"
@@ -176,6 +156,7 @@ export function Dashboard() {
           )}
         </WorkflowStepCard>
 
+        {/* Step 3: Assess */}
         <WorkflowStepCard isDisabled={workflowStep < 2} variant={workflowStep >= 3 ? 'complete' : 'active'}>
           <div className="flex items-start justify-between">
             <div className="space-y-4">
@@ -196,7 +177,7 @@ export function Dashboard() {
 
               {workflowStep === 2 && (
                 <button
-                  onClick={() => handleWorkflowAction(3)}
+                  onClick={runAssessment}
                   disabled={isProcessing}
                   className="mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-50 shadow-md shadow-blue-200"
                   type="button"
@@ -228,5 +209,3 @@ export function Dashboard() {
     </div>
   )
 }
-
-
