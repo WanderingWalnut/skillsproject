@@ -3,13 +3,14 @@ import {
   useCallback,
   useContext,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from 'react'
 
+import { API_BASE_URL } from '../config/constants'
 import { generateMockAssets } from '../lib/mockData'
 import type { Asset, WorkflowStep } from '../types/asset'
+import type { TrainResponse } from '../types/api'
 
 export interface WorkflowContextType {
   workflowStep: WorkflowStep
@@ -20,8 +21,12 @@ export interface WorkflowContextType {
   setAssets: (assets: Asset[]) => void
   selectedAsset: Asset | null
   setSelectedAsset: (asset: Asset | null) => void
-  handleWorkflowAction: (nextStep: WorkflowStep) => void
+  handleWorkflowAction: (nextStep: WorkflowStep) => Promise<void>
   resetWorkflow: () => void
+  modelId: string | null
+  trainResult: TrainResponse | null
+  uploadedFile: File | null
+  setUploadedFile: (file: File | null) => void
 }
 
 const WorkflowContext = createContext<WorkflowContextType | null>(null)
@@ -31,43 +36,82 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [assets, setAssets] = useState<Asset[]>([])
   const [selectedAsset, setSelectedAsset] = useState<Asset | null>(null)
-
-  const pendingTimeoutRef = useRef<number | null>(null)
+  const [modelId, setModelId] = useState<string | null>(null)
+  const [trainResult, setTrainResult] = useState<TrainResponse | null>(null)
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null)
 
   const handleWorkflowAction = useCallback(
-    (nextStep: WorkflowStep) => {
-      // Simulate async backend work for the MVP (upload/train/predict).
-      // When we hook up the real API, this will become async calls and proper progress/error states.
+    async (nextStep: WorkflowStep) => {
       setIsProcessing(true)
 
-      if (pendingTimeoutRef.current !== null) {
-        window.clearTimeout(pendingTimeoutRef.current)
-      }
-
-      pendingTimeoutRef.current = window.setTimeout(() => {
-        setIsProcessing(false)
-        setWorkflowStep(nextStep)
-
-        if (nextStep === 3) {
-          // Generate fleet data only once per run so list/detail views stay consistent.
-          setAssets((prev) => (prev.length > 0 ? prev : generateMockAssets()))
+      try {
+        // Step 0 → 1: File has been selected, advance to training step
+        if (nextStep === 1) {
+          setWorkflowStep(nextStep)
         }
-      }, 1500)
+
+        // Step 1 → 2: Train the ML model with uploaded file
+        if (nextStep === 2) {
+          let fileToUpload: File
+
+          if (uploadedFile) {
+            // Use the user-uploaded file
+            fileToUpload = uploadedFile
+          } else {
+            // Fallback: fetch sample CSV from public folder
+            const csvResponse = await fetch('/sample_maintenance_data.csv')
+            const csvBlob = await csvResponse.blob()
+            fileToUpload = new File([csvBlob], 'sample_maintenance_data.csv', {
+              type: 'text/csv',
+            })
+          }
+
+          // Upload to training endpoint
+          const formData = new FormData()
+          formData.append('file', fileToUpload)
+
+          const response = await fetch(`${API_BASE_URL}/train`, {
+            method: 'POST',
+            body: formData,
+          })
+
+          if (!response.ok) {
+            const error = await response.json()
+            throw new Error(error.detail || 'Training failed')
+          }
+
+          const result: TrainResponse = await response.json()
+          setModelId(result.model_id)
+          setTrainResult(result)
+          setWorkflowStep(nextStep)
+        }
+
+        // Step 2 → 3: Assess fleet risk (uses mock data for MVP until predict endpoint is ready)
+        if (nextStep === 3) {
+          // TODO: Replace with real /predict API call when endpoint is implemented
+          await new Promise((resolve) => setTimeout(resolve, 1000))
+          setAssets((prev) => (prev.length > 0 ? prev : generateMockAssets()))
+          setWorkflowStep(nextStep)
+        }
+      } catch (error) {
+        console.error('Workflow action failed:', error)
+        // TODO: Add proper error state/toast for user feedback
+      } finally {
+        setIsProcessing(false)
+      }
     },
-    [setAssets],
+    [uploadedFile, setAssets],
   )
 
   const resetWorkflow = useCallback(() => {
     // Used by the Navbar logo click + Reset button to return to a clean demo state.
-    if (pendingTimeoutRef.current !== null) {
-      window.clearTimeout(pendingTimeoutRef.current)
-      pendingTimeoutRef.current = null
-    }
-
     setIsProcessing(false)
     setWorkflowStep(0)
     setAssets([])
     setSelectedAsset(null)
+    setModelId(null)
+    setTrainResult(null)
+    setUploadedFile(null)
   }, [])
 
   const value = useMemo<WorkflowContextType>(
@@ -82,6 +126,10 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       setSelectedAsset,
       handleWorkflowAction,
       resetWorkflow,
+      modelId,
+      trainResult,
+      uploadedFile,
+      setUploadedFile,
     }),
     [
       workflowStep,
@@ -90,6 +138,9 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       selectedAsset,
       handleWorkflowAction,
       resetWorkflow,
+      modelId,
+      trainResult,
+      uploadedFile,
     ],
   )
 

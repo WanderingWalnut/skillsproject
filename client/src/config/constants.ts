@@ -1,5 +1,7 @@
 import type { RiskStatus } from '../types/asset'
 
+export const API_BASE_URL = 'http://localhost:8000/api/v1'
+
 export const VIBRATION_THRESHOLD = 6.0
 
 export const RISK_BADGE_LABELS: Record<RiskStatus, string> = {

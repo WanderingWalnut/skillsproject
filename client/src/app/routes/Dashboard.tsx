@@ -1,4 +1,5 @@
-import { Activity, CheckCircle, ChevronRight, Cpu, UploadCloud, Zap } from 'lucide-react'
+import { Activity, CheckCircle, ChevronRight, Cpu, FileText, UploadCloud, X, Zap } from 'lucide-react'
+import { useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 
 import { useWorkflow } from '../../stores/WorkflowContext'
@@ -7,7 +8,34 @@ import { WorkflowStepCard } from './dashboard/WorkflowStepCard'
 
 export function Dashboard() {
   const navigate = useNavigate()
-  const { workflowStep, isProcessing, handleWorkflowAction } = useWorkflow()
+  const { workflowStep, isProcessing, handleWorkflowAction, uploadedFile, setUploadedFile } = useWorkflow()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file && file.type === 'text/csv') {
+      setUploadedFile(file)
+    }
+  }
+
+  const handleUploadClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleRemoveFile = () => {
+    setUploadedFile(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
+  const handleUseSampleData = async () => {
+    // Fetch sample CSV and set it as the uploaded file
+    const csvResponse = await fetch('/sample_maintenance_data.csv')
+    const csvBlob = await csvResponse.blob()
+    const sampleFile = new File([csvBlob], 'sample_maintenance_data.csv', { type: 'text/csv' })
+    setUploadedFile(sampleFile)
+  }
 
   // The dashboard is intentionally "dumb": it orchestrates the 3-step UI and navigation,
   // while business state (step/progress/assets) lives in WorkflowContext.
@@ -38,24 +66,72 @@ export function Dashboard() {
               </p>
 
               {workflowStep === 0 && (
-                <button
-                  onClick={() => handleWorkflowAction(1)}
-                  disabled={isProcessing}
-                  className="mt-4 px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 disabled:opacity-50"
-                  type="button"
-                >
-                  {isProcessing ? 'Uploading...' : 'Upload Sample Dataset'}
-                  {!isProcessing && <ChevronRight size={16} />}
-                </button>
+                <div className="mt-4 space-y-4">
+                  {/* Hidden file input */}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".csv"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+
+                  {/* File selection UI */}
+                  {!uploadedFile ? (
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={handleUploadClick}
+                        disabled={isProcessing}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        type="button"
+                      >
+                        <UploadCloud size={18} />
+                        Choose CSV File
+                      </button>
+                      <button
+                        onClick={handleUseSampleData}
+                        disabled={isProcessing}
+                        className="px-6 py-3 border border-slate-300 text-slate-700 rounded-lg font-medium hover:bg-slate-50 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        type="button"
+                      >
+                        <FileText size={18} />
+                        Use Sample Dataset
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-4">
+                      {/* Selected file display */}
+                      <div className="flex items-center gap-3 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-lg">
+                        <FileText size={18} className="text-emerald-600" />
+                        <span className="text-sm font-medium text-emerald-800">{uploadedFile.name}</span>
+                        <button
+                          onClick={handleRemoveFile}
+                          className="p-1 hover:bg-emerald-100 rounded-full transition-colors"
+                          type="button"
+                        >
+                          <X size={14} className="text-emerald-600" />
+                        </button>
+                      </div>
+
+                      {/* Continue button */}
+                      <button
+                        onClick={() => handleWorkflowAction(1)}
+                        disabled={isProcessing}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-lg font-medium hover:bg-slate-800 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        type="button"
+                      >
+                        {isProcessing ? 'Processing...' : 'Continue'}
+                        {!isProcessing && <ChevronRight size={16} />}
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
 
-              {workflowStep >= 1 && (
+              {workflowStep >= 1 && uploadedFile && (
                 <div className="flex gap-6 mt-2 text-sm text-slate-600">
                   <span className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-emerald-500" /> 24,500 Readings
-                  </span>
-                  <span className="flex items-center gap-2">
-                    <CheckCircle size={14} className="text-emerald-500" /> 8 Assets Detected
+                    <CheckCircle size={14} className="text-emerald-500" /> {uploadedFile.name}
                   </span>
                 </div>
               )}
