@@ -1,33 +1,27 @@
-from fastapi import APIRouter, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.orm import Session
 
-from app.core.services.processing_service import read_csv_upload, validate_training_dataframe
-from app.core.services.train_model_service import train_from_dataframe
+from app.api.deps import get_db
+from app.core.services.training_workflow_service import train_and_persist_from_upload
 from app.schemas.train import TrainResponse
 
 router = APIRouter(tags=["train"])
 
 
 @router.post("/train", response_model=TrainResponse)
-async def train_model(file: UploadFile = File(...)) -> TrainResponse:
+async def train_model(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+) -> TrainResponse:
     """
     Upload + train in one call (MVP).
 
     This endpoint is intentionally thin: it delegates parsing/validation and ML training to services.
     """
     try:
-        df = await read_csv_upload(file)
-        df = validate_training_dataframe(df)
-        result = train_from_dataframe(df)
-
-        return TrainResponse(
-            model_id=result.model_id,
-            rows_used=result.rows_used,
-            assets=result.assets,
-            positive_rate=result.positive_rate,
-            metrics=result.metrics,
-            model_path=result.model_path,
-        )
+        return await train_and_persist_from_upload(file=file, db=db)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
+        # If persistence fails, surface a clear message (still a server error).
         raise HTTPException(status_code=500, detail="Training failed") from e

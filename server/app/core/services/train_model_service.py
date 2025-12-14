@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -16,6 +17,7 @@ from sklearn.model_selection import train_test_split
 @dataclass(frozen=True)
 class TrainResult:
     model_id: str
+    training_date: datetime
     rows_used: int
     assets: int
     positive_rate: float
@@ -94,6 +96,7 @@ def train_from_dataframe(df: pd.DataFrame) -> TrainResult:
             metrics["roc_auc"] = float(roc_auc_score(y_val, y_prob))
 
     model_id = str(uuid4())
+    training_date = datetime.utcnow()
     artifacts_dir = Path(__file__).resolve().parents[1] / "artifacts" / "models"
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     model_path = artifacts_dir / f"{model_id}.joblib"
@@ -101,6 +104,7 @@ def train_from_dataframe(df: pd.DataFrame) -> TrainResult:
 
     return TrainResult(
         model_id=model_id,
+        training_date=training_date,
         rows_used=int(df.shape[0]),
         assets=int(df["asset_id"].nunique()),
         positive_rate=float(np.mean(y)),
