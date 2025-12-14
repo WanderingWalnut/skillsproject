@@ -15,3 +15,6 @@ numpy
 # Machine Learning
 scikit-learn
 
+# Database ORM
+sqlalchemy
+
