@@ -1,0 +1,140 @@
+# AI Maintenance Predictor Dashboard - Cursor Rules
+
+## Project Overview
+AI-powered predictive maintenance dashboard for industrial assets. Converts sensor data into clear risk levels (Green/Yellow/Red) using ML models. 3-page MVP: Dashboard (Upload → Train → Assess), Assets (fleet overview), Asset Detail (charts & recommendations).
+
+**Tech Stack:** FastAPI + scikit-learn (backend), React + TypeScript + Tailwind CSS + Recharts (frontend)
+
+---
+
+## Backend Structure (FastAPI)
+
+```
+server/app/
+├── main.py                          # FastAPI entry point
+├── api/api_v1/endpoints/           # Route handlers (upload.py, train.py, predict.py, assets.py)
+├── core/                            # config.py (settings), security.py
+├── crud/                            # Database operations
+├── models/                          # Database models (asset.py, prediction.py)
+└── schemas/                         # Pydantic schemas (request/response validation)
+```
+
+### Backend Principles
+- **Separation of concerns**: API routes → schemas → models
+- **Versioned API**: Use `api_v1/` namespace
+- **Type safety**: All endpoints use Pydantic schemas for validation
+- **Dependency injection**: Common dependencies in `api/deps.py`
+- Endpoints import from `schemas`, `crud`, `models`, `core` (never from `api/`)
+
+### API Endpoints
+- `POST /api/v1/upload` - CSV upload & validation
+- `POST /api/v1/train` - Train ML model
+- `POST /api/v1/predict` - Compute asset risk
+- `GET /api/v1/assets` - Fleet overview
+- `GET /api/v1/assets/{id}` - Asset detail
+
+---
+
+## Frontend Structure (React + TypeScript)
+
+```
+client/src/
+├── app/routes/                      # Page components (Dashboard.tsx, Assets.tsx, AssetDetail.tsx)
+├── components/                      # Shared UI (RiskBadge/, Chart/, Layout/)
+├── hooks/                           # Custom hooks (useApi.ts, useUpload.ts, useAssets.ts)
+├── lib/                             # Utilities (api.ts, formatters.ts, validators.ts)
+├── types/                           # TypeScript types (api.ts, asset.ts)
+├── stores/                          # State management (workflow.ts)
+└── config/                          # constants.ts (API URLs, thresholds)
+```
+
+### Frontend Principles
+- **Import hierarchy**: Routes → Components → Hooks → Lib → Types
+- **No circular dependencies**: Never import from `app/routes/` in shared code
+- **Routing**: React Router v6 for navigation (`useNavigate`, `useParams`, `<Link>`)
+- **Type safety**: Match TypeScript types to backend Pydantic schemas
+- Components import from `hooks/`, `lib/`, `types/` only
+
+---
+
+## Styling Strategy (Tailwind CSS)
+
+### Industrial Minimalist Theme
+**Color Palette:**
+- **Neutral Base**: Slate scale (`bg-slate-50`, `text-slate-900`, `border-slate-200`)
+- **Semantic Colors** (status only):
+  - Green/Emerald: Normal (`bg-emerald-100`, `text-emerald-700`)
+  - Yellow/Amber: Warning (`bg-amber-100`, `text-amber-700`)
+  - Red: Critical (`bg-red-600`, `text-red-700`)
+  - Blue: Primary interactions & charts (`bg-blue-600`, `text-blue-600`)
+
+**Typography:**
+- `font-sans` for UI text (readability)
+- `font-mono` for sensor data (vertical alignment in tables)
+
+**Components:**
+- Cards: `bg-white border border-slate-200 shadow-sm rounded-xl`
+- Visual hierarchy: Bold for critical info, `text-slate-500` for metadata
+- Animations: `animate-in fade-in slide-in-from-bottom` for entrances, `transition-all duration-300` for hovers
+
+---
+
+## Navigation & Routing
+
+### React Router (v6)
+```typescript
+// Routes
+/ → Dashboard (Upload → Train → Assess workflow)
+/assets → Assets list (fleet overview)
+/assets/:id → Asset detail view
+```
+
+**Routing Setup:**
+- Use `<BrowserRouter>` in `main.tsx`
+- Define routes in `app/router.tsx` or `App.tsx`
+- Navigate with `useNavigate()` hook and `<Link>` components
+- Access params with `useParams()` (e.g., asset ID)
+
+**User Flow:**
+1. **Dashboard** (`/`) → Complete workflow → `navigate('/assets')`
+2. **Assets** (`/assets`) → Click row → `navigate(\`/assets/${asset.id}\`)`
+3. **Asset Detail** (`/assets/:id`) → Back button → `navigate('/assets')`
+
+**Persistent Elements:**
+- **Navbar**: Use `<Link to="/">` for logo, visible across all routes via layout
+- **Reset Button**: Floating bottom-right; clears demo state and `navigate('/')`
+
+---
+
+## Best Practices
+
+### Backend
+- Use async/await for all route handlers
+- Validate all inputs with Pydantic schemas
+- Handle errors with HTTPException and proper status codes
+- Keep ML models separate from API logic (load once, reuse)
+- Log important events (uploads, training, predictions)
+
+### Frontend
+- Use TypeScript strict mode
+- Extract reusable logic into custom hooks
+- Keep components small and focused
+- Memoize expensive computations (useMemo, useCallback)
+- Use Tailwind classes directly (no custom CSS unless necessary)
+
+### General
+- **MVP mindset**: Skip auth, database, Docker, tests for now
+- **Explainability first**: Users need to understand "why" for risk levels
+- **Decision-focused UI**: Clear, actionable recommendations
+- File storage for MVP (CSV uploads, trained models)
+- Simple error handling (user-friendly messages)
+
+---
+
+## Risk Interpretation
+- **Green**: Normal operation → continue monitoring
+- **Yellow**: Warning signals → plan inspection  
+- **Red**: High failure risk → urgent action
+
+Risk derived from ML model predicted failure probability.
+

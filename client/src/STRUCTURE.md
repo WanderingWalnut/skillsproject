@@ -1,6 +1,6 @@
-# Project Structure
+# Frontend Structure
 
-This document explains the folder structure for the AI Maintenance Predictor Dashboard MVP.
+This document explains the frontend folder structure, following FastAPI template organization principles adapted for our MVP.
 
 ## Structure Overview
 
