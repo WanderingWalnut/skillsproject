@@ -1,0 +1,17 @@
+# FastAPI and server
+fastapi
+uvicorn
+
+# Data validation
+pydantic
+
+# File uploads
+python-multipart
+
+# Data processing
+pandas
+numpy
+
+# Machine Learning
+scikit-learn
+
