@@ -10,7 +10,17 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, roc_auc_score
+from sklearn.metrics import (
+    accuracy_score,
+    average_precision_score,
+    balanced_accuracy_score,
+    brier_score_loss,
+    f1_score,
+    log_loss,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 from sklearn.model_selection import train_test_split
 
 
@@ -88,12 +98,28 @@ def train_from_dataframe(df: pd.DataFrame) -> TrainResult:
         model.fit(X_train, y_train)
 
         y_pred = model.predict(X_val)
-        metrics = {"accuracy": float(accuracy_score(y_val, y_pred))}
+        # Add a compact but insightful set of metrics (all floats for easy JSON/DB storage).
+        metrics = {
+            "accuracy": float(accuracy_score(y_val, y_pred)),
+            "balanced_accuracy": float(balanced_accuracy_score(y_val, y_pred)),
+            "precision": float(precision_score(y_val, y_pred, zero_division=0)),
+            "recall": float(recall_score(y_val, y_pred, zero_division=0)),
+            "f1": float(f1_score(y_val, y_pred, zero_division=0)),
+            # Helpful context for interpreting metrics in imbalanced datasets.
+            "val_samples": float(int(y_val.shape[0])),
+            "val_positives": float(int(np.sum(y_val == 1))),
+            "val_positive_rate": float(np.mean(y_val)),
+        }
 
         # roc_auc requires probability estimates and both classes present in y_val.
         if np.unique(y_val).size == 2:
-            y_prob = model.predict_proba(X_val)[:, 1]
+            y_proba = model.predict_proba(X_val)
+            y_prob = y_proba[:, 1]
             metrics["roc_auc"] = float(roc_auc_score(y_val, y_prob))
+            metrics["avg_precision"] = float(average_precision_score(y_val, y_prob))
+            # Probability-quality metrics:
+            metrics["log_loss"] = float(log_loss(y_val, y_proba))
+            metrics["brier"] = float(brier_score_loss(y_val, y_prob))
 
     model_id = str(uuid4())
     training_date = datetime.utcnow()
