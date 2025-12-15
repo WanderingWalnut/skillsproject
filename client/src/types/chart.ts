@@ -5,4 +5,10 @@ export interface ChartDataPoint {
   threshold: number
 }
 
+export interface RiskHistoryPoint {
+  time: string
+  failureProbability: number
+  riskLevel: 'normal' | 'warning' | 'critical'
+}
+
 

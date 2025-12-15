@@ -61,3 +61,35 @@ def get_assets_with_latest_prediction(db: Session):
 
     return rows
 
+
+def get_latest_prediction_for_asset(db: Session, asset_id: str) -> Prediction | None:
+    return (
+        db.query(Prediction)
+        .filter(Prediction.asset_id == asset_id)
+        .order_by(Prediction.timestamp.desc(), Prediction.created_at.desc())
+        .first()
+    )
+
+
+def get_prediction_history_for_asset(
+    db: Session, asset_id: str, *, limit: int = 50
+) -> list[Prediction]:
+    return (
+        db.query(Prediction)
+        .filter(Prediction.asset_id == asset_id)
+        .order_by(Prediction.timestamp.asc(), Prediction.created_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+
+def get_recent_training_samples_for_asset(
+    db: Session, asset_id: str, *, limit: int = 24
+) -> list[TrainingData]:
+    return (
+        db.query(TrainingData)
+        .filter(TrainingData.asset_id == asset_id)
+        .order_by(TrainingData.id.desc())
+        .limit(limit)
+        .all()
+    )

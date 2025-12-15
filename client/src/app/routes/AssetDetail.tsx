@@ -1,10 +1,12 @@
-import { Activity, ArrowLeft, BarChart2, Clock, Zap } from 'lucide-react'
-import { useEffect, useMemo } from 'react'
+import { ArrowLeft, BarChart2, Clock, TrendingUp, Zap } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 
-import { VibrationChart } from '../../components/Chart/VibrationChart'
+import { RiskHistoryChart } from '../../components/Chart/RiskHistoryChart'
 import { MetricCard } from '../../components/MetricCard/MetricCard'
-import { generateMockChartData } from '../../lib/mockData'
+import { fetchAssetDetail } from '../../lib/api'
+import type { AssetDetailResponse, RiskLevel } from '../../types/api'
+import type { RiskHistoryPoint } from '../../types/chart'
 import { useWorkflow } from '../../stores/WorkflowContext'
 import { AssetDetailHeader } from './assetDetail/AssetDetailHeader'
 import { DiagnosticPanel } from './assetDetail/DiagnosticPanel'
@@ -27,8 +29,34 @@ export function AssetDetail() {
     }
   }, [asset, selectedAsset, setSelectedAsset])
 
-  // Mock chart data is stable for the lifetime of the page to avoid visual jitter.
-  const chartData = useMemo(() => generateMockChartData(), [])
+  const [detail, setDetail] = useState<AssetDetailResponse | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    if (asset) {
+      fetchAssetDetail(asset.id)
+        .then((d) => {
+          if (!cancelled) setDetail(d)
+        })
+        .catch((e) => {
+          console.error('Failed to load asset detail:', e)
+        })
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [asset])
+
+  // Build chart data from prediction history showing failure probability percentage
+  const riskHistoryData = useMemo((): RiskHistoryPoint[] => {
+    const hist = detail?.history ?? []
+    if (!hist.length) return []
+    return hist.map((p) => ({
+      time: new Date(p.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      failureProbability: Math.round(p.failure_probability * 100),
+      riskLevel: p.risk_level as RiskLevel,
+    }))
+  }, [detail?.history])
 
   if (workflowStep < 3) {
     return (
@@ -99,30 +127,33 @@ export function AssetDetail() {
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                <Activity size={18} className="text-slate-400" />
-                Real-time Vibration Analysis
+                <TrendingUp size={18} className="text-slate-400" />
+                Failure Risk Trend
               </h3>
 
-              <div className="flex gap-2">
-                {['1H', '24H', '7D'].map((period) => (
-                  <button
-                    key={period}
-                    className={`px-3 py-1 text-xs font-medium rounded-md ${
-                      period === '24H' ? 'bg-slate-100 text-slate-900' : 'text-slate-500 hover:bg-slate-50'
-                    }`}
-                    type="button"
-                  >
-                    {period}
-                  </button>
-                ))}
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span className="w-3 h-0.5 bg-amber-500" />
+                  <span>Warning (50%)</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <span className="w-3 h-0.5 bg-red-500" />
+                  <span>Critical (80%)</span>
+                </div>
               </div>
             </div>
 
-            <VibrationChart data={chartData} isCritical={isCritical} />
+            {riskHistoryData.length > 0 ? (
+              <RiskHistoryChart data={riskHistoryData} isCritical={isCritical} />
+            ) : (
+              <div className="h-80 flex items-center justify-center text-slate-400">
+                <p>No prediction history available yet</p>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <MetricCard label="Temperature" value={`${asset.temp.toFixed(1)}°C`} Icon={Zap} />
+            <MetricCard label="Temperature" value={`${(detail?.metrics?.temperature ?? asset.temp).toFixed(1)}°C`} Icon={Zap} />
             <MetricCard label="Efficiency" value={`${asset.efficiency.toFixed(1)}%`} Icon={BarChart2} />
             <MetricCard label="Runtime" value="412 Hrs" Icon={Clock} />
           </div>
@@ -133,5 +164,4 @@ export function AssetDetail() {
     </div>
   )
 }
-
 

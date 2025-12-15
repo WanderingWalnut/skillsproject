@@ -23,3 +23,38 @@ class AssetsResponse(BaseModel):
 
     assets: list[AssetStatus]
 
+
+class PredictionSummary(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
+    model_id: str
+    timestamp: datetime
+    risk_level: RiskLevel
+    failure_probability: float
+
+
+class HistoryPoint(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
+    model_id: str
+    timestamp: datetime
+    risk_level: RiskLevel
+    failure_probability: float
+
+
+class MetricsSnapshot(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
+    temperature: float
+    vibration: float
+    pressure: float
+    current: float
+
+
+class AssetDetailResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+
+    asset_id: str
+    latest: Optional[PredictionSummary] = None
+    history: list[HistoryPoint] = []
+    metrics: Optional[MetricsSnapshot] = None

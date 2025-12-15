@@ -26,3 +26,17 @@ def create_predictions_bulk(db: Session, rows: list[PredictionCreate]) -> None:
     db.commit()
 
 
+def get_prediction_history(db: Session, asset_id: str, limit: int = 100) -> list[Prediction]:
+    """
+    Return all predictions for a given asset, ordered by timestamp ascending.
+    This provides time-series data for trend visualization.
+    """
+    return (
+        db.query(Prediction)
+        .filter(Prediction.asset_id == asset_id)
+        .order_by(Prediction.timestamp.asc())
+        .limit(limit)
+        .all()
+    )
+
+

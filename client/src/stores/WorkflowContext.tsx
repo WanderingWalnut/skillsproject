@@ -38,6 +38,28 @@ function mapAssessmentToAsset(a: AssetAssessment): Asset {
   }
 }
 
+/**
+ * Deduplicate assets by id, keeping the entry with the most recent lastReading.
+ * This ensures we only show one row per asset in the fleet overview.
+ */
+function deduplicateAssets(assets: Asset[]): Asset[] {
+  const byId = new Map<string, Asset>()
+  for (const asset of assets) {
+    const existing = byId.get(asset.id)
+    if (!existing) {
+      byId.set(asset.id, asset)
+    } else {
+      // Keep the asset with the more recent lastReading
+      const existingTime = new Date(existing.lastReading).getTime()
+      const currentTime = new Date(asset.lastReading).getTime()
+      if (currentTime > existingTime || isNaN(existingTime)) {
+        byId.set(asset.id, asset)
+      }
+    }
+  }
+  return Array.from(byId.values())
+}
+
 export interface WorkflowContextType {
   // Workflow state
   workflowStep: WorkflowStep
@@ -96,7 +118,9 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     setIsProcessing(true)
     try {
       const result: PredictResponse = await predictRisk(uploadedFile, modelId)
-      setAssets(result.assessments.map(mapAssessmentToAsset))
+      // Deduplicate to ensure one entry per asset with the latest reading
+      const newAssets = deduplicateAssets(result.assessments.map(mapAssessmentToAsset))
+      setAssets(newAssets)
       setWorkflowStep(3)
     } catch (error) {
       console.error('Assessment failed:', error)
@@ -160,7 +184,8 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
         for (const a of prev) {
           if (!serverIds.has(a.id)) updated.push(a)
         }
-        return updated.sort((a, b) => a.id.localeCompare(b.id))
+        // Deduplicate and sort to ensure one entry per asset
+        return deduplicateAssets(updated).sort((a, b) => a.id.localeCompare(b.id))
       })
     } catch (err) {
       console.error('Failed to refresh assets:', err)

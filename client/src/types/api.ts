@@ -41,3 +41,32 @@ export interface AssetStatus {
 export interface AssetsResponse {
     assets: AssetStatus[]
 }
+
+// Asset detail (GET /assets/{asset_id})
+export interface PredictionSummary {
+    model_id: string
+    timestamp: string
+    risk_level: RiskLevel
+    failure_probability: number
+}
+
+export interface HistoryPoint {
+    model_id: string
+    timestamp: string
+    risk_level: RiskLevel
+    failure_probability: number
+}
+
+export interface MetricsSnapshot {
+    temperature: number
+    vibration: number
+    pressure: number
+    current: number
+}
+
+export interface AssetDetailResponse {
+    asset_id: string
+    latest: PredictionSummary | null
+    history: HistoryPoint[]
+    metrics: MetricsSnapshot | null
+}
