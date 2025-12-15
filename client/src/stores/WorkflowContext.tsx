@@ -7,9 +7,9 @@ import {
   type ReactNode,
 } from 'react'
 
-import { predictRisk, trainModel } from '../lib/api'
+import { fetchAssets, predictRisk, trainModel } from '../lib/api'
 import type { Asset, WorkflowStep } from '../types/asset'
-import type { AssetAssessment, PredictResponse, TrainResponse } from '../types/api'
+import type { AssetAssessment, AssetsResponse, PredictResponse, TrainResponse } from '../types/api'
 
 function actionForRisk(status: Asset['status']): string {
   switch (status) {
@@ -54,6 +54,7 @@ export interface WorkflowContextType {
   advanceToStep: (step: WorkflowStep) => void
   runTraining: () => Promise<void>
   runAssessment: () => Promise<void>
+  refreshAssets: () => Promise<void>
   resetWorkflow: () => void
 }
 
@@ -114,6 +115,58 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
     setSelectedAsset(null)
   }, [])
 
+  const refreshAssets = useCallback(async () => {
+    try {
+      const resp: AssetsResponse = await fetchAssets()
+      // Merge server statuses into existing assets; create placeholders for new ones.
+      setAssets((prev) => {
+        const byId = new Map(prev.map((a) => [a.id, a]))
+        const updated: Asset[] = []
+        for (const s of resp.assets) {
+          const existing = byId.get(s.asset_id)
+          const failurePct = s.failure_probability != null ? Math.round(s.failure_probability * 100) : null
+          if (existing) {
+            const status = (s.risk_level ?? existing.status) as Asset['status']
+            updated.push({
+              ...existing,
+              status,
+              efficiency: s.failure_probability != null
+                ? Math.max(0, Math.min(100, Math.round((1 - s.failure_probability) * 100)))
+                : existing.efficiency,
+              lastReading: s.timestamp ? new Date(s.timestamp).toLocaleString() : existing.lastReading,
+              prediction: failurePct != null ? `${failurePct}% failure probability` : existing.prediction,
+              action: s.risk_level ? actionForRisk(s.risk_level) : existing.action,
+            })
+          } else {
+            // Placeholder temps when we only have risk summary; will be refined by detail route later.
+            const status = (s.risk_level ?? 'normal') as Asset['status']
+            updated.push({
+              id: s.asset_id,
+              name: s.asset_id,
+              status,
+              temp: 0,
+              vibration: 0,
+              efficiency: s.failure_probability != null
+                ? Math.max(0, Math.min(100, Math.round((1 - s.failure_probability) * 100)))
+                : 100,
+              lastReading: s.timestamp ? new Date(s.timestamp).toLocaleString() : '—',
+              prediction: failurePct != null ? `${failurePct}% failure probability` : 'No prediction yet',
+              action: actionForRisk(status),
+            })
+          }
+        }
+        // Preserve any local-only assets not present on server
+        const serverIds = new Set(resp.assets.map((s) => s.asset_id))
+        for (const a of prev) {
+          if (!serverIds.has(a.id)) updated.push(a)
+        }
+        return updated.sort((a, b) => a.id.localeCompare(b.id))
+      })
+    } catch (err) {
+      console.error('Failed to refresh assets:', err)
+    }
+  }, [])
+
   const value = useMemo<WorkflowContextType>(
     () => ({
       workflowStep,
@@ -128,6 +181,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       advanceToStep,
       runTraining,
       runAssessment,
+      refreshAssets,
       resetWorkflow,
     }),
     [
@@ -141,6 +195,7 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
       advanceToStep,
       runTraining,
       runAssessment,
+      refreshAssets,
       resetWorkflow,
     ],
   )

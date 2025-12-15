@@ -29,3 +29,15 @@ export interface PredictResponse {
     assessments: AssetAssessment[]
 }
 
+// Assets listing (GET /assets)
+export interface AssetStatus {
+    asset_id: string
+    risk_level?: RiskLevel
+    failure_probability?: number
+    timestamp?: string
+    model_id?: string
+}
+
+export interface AssetsResponse {
+    assets: AssetStatus[]
+}

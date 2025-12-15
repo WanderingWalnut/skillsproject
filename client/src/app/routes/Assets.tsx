@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
+import { useEffect } from 'react'
 
 import { useWorkflow } from '../../stores/WorkflowContext'
 import type { Asset } from '../../types/asset'
@@ -7,7 +8,7 @@ import { AssetsTable } from './assets/AssetsTable'
 
 export function Assets() {
   const navigate = useNavigate()
-  const { assets, workflowStep, setSelectedAsset } = useWorkflow()
+  const { assets, workflowStep, setSelectedAsset, refreshAssets } = useWorkflow()
 
   // Guard the route until the dashboard workflow has produced an assessment.
   if (workflowStep < 3) {
@@ -36,6 +37,15 @@ export function Assets() {
     navigate(`/assets/${asset.id}`)
   }
 
+  // On first render after assessments exist, refresh from server to ensure
+  // the table reflects the latest persisted predictions.
+  useEffect(() => {
+    if (workflowStep >= 3) {
+      void refreshAssets()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workflowStep])
+
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <AssetsHeaderControls />
@@ -43,5 +53,4 @@ export function Assets() {
     </div>
   )
 }
-
 
