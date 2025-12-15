@@ -7,10 +7,36 @@ import {
   type ReactNode,
 } from 'react'
 
-import { trainModel } from '../lib/api'
-import { generateMockAssets } from '../lib/mockData'
+import { predictRisk, trainModel } from '../lib/api'
 import type { Asset, WorkflowStep } from '../types/asset'
-import type { TrainResponse } from '../types/api'
+import type { AssetAssessment, PredictResponse, TrainResponse } from '../types/api'
+
+function actionForRisk(status: Asset['status']): string {
+  switch (status) {
+    case 'critical':
+      return 'Urgent inspection recommended'
+    case 'warning':
+      return 'Schedule maintenance soon'
+    case 'normal':
+    default:
+      return 'Continue monitoring'
+  }
+}
+
+function mapAssessmentToAsset(a: AssetAssessment): Asset {
+  const failurePct = Math.round(a.failure_probability * 100)
+  return {
+    id: a.asset_id,
+    name: a.asset_id,
+    status: a.risk_level,
+    temp: a.temperature,
+    vibration: a.vibration,
+    efficiency: Math.max(0, Math.min(100, Math.round((1 - a.failure_probability) * 100))),
+    lastReading: new Date(a.timestamp).toLocaleString(),
+    prediction: `${failurePct}% failure probability`,
+    action: actionForRisk(a.risk_level),
+  }
+}
 
 export interface WorkflowContextType {
   // Workflow state
@@ -64,18 +90,19 @@ export function WorkflowProvider({ children }: { children: ReactNode }) {
   }, [uploadedFile])
 
   const runAssessment = useCallback(async () => {
+    if (!uploadedFile || !modelId) return
+
     setIsProcessing(true)
     try {
-      // TODO: Replace with real /predict API call when endpoint is implemented
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      setAssets((prev) => (prev.length > 0 ? prev : generateMockAssets()))
+      const result: PredictResponse = await predictRisk(uploadedFile, modelId)
+      setAssets(result.assessments.map(mapAssessmentToAsset))
       setWorkflowStep(3)
     } catch (error) {
       console.error('Assessment failed:', error)
     } finally {
       setIsProcessing(false)
     }
-  }, [])
+  }, [uploadedFile, modelId])
 
   const resetWorkflow = useCallback(() => {
     setIsProcessing(false)

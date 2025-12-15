@@ -3,7 +3,7 @@ from app.api.api_v1 import api_router
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.db.dp import Base, engine
-from app.models import ModelMetadata, TrainingData  # noqa: F401
+from app.models import ModelMetadata, Prediction, TrainingData  # noqa: F401
 
 
 
