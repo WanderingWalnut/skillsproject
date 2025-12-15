@@ -194,7 +194,7 @@ Interactive time-series chart showing failure risk trend over 24 hours with Warn
 
 ## License
 
-This project is for educational and demonstration purposes.
+This project is for educational and demonstration purposes. The code here is not available for reuse!
 
 ---
 
